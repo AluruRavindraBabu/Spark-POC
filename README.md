@@ -8,7 +8,7 @@ Environment Setup
    3. Hadoop 2.7 , Hive, Sqoop , Pig ,Flume, Kafka, Impala , Cassandra , Apache Spark , Tableau and R language.
    4. Sbt -Set up on local windows PC and on cluster
    5. Scala setup
-   6. Other misclenous softwares
+   6. RDBMS (Oracle , Mysql and JDBC drivers)
    
    
    
