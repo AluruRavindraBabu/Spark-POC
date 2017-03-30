@@ -1,0 +1,91 @@
+Use Case : Compute daily revenue for each day for each department:
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Database : retail_db (Standard sample database which comes with MYSql server.
+
++---------------------+
+| Tables_in_retail_db |
++---------------------+
+| categories          |
+| customers           |
+| departments         |
+| order_items         |
+| orders              |
+| products            |
++---------------------+
+
+
+
+4 Node Cluster : (Which I have install on my laptop) -- Please refer below link youtube to set up this ...
+
+
+Sqoop: to import tables from RDBMS to local HDFS folder.
+
+SAPARK: (First I am using SPARK-SHELL --master YARN-CLIENT to achieve the above case)
+
+[Please note there are several methods to achieve this task depends on your existing environment]...
+
+  Execution: 
+ step 1:  I would like to see the list of the tables in the database through SQOOP. I have developed below sqoop code
+  to view the tables:
+  
+>>>>  sqoop list-tables --connect "jdbc:mysql://mysqlserverhostname or ipaddress :3306/retail_db" --username retail_dba --password itversity
+
+ step2 : Import tables into local hdfs in the given folder ravi/spark/retail_db 
+ 
+ sqoop import-all-tables \
+ --connect "jdbc:mysql://nn01.itversity.com:3306/retail_db" \
+ --username retail_dba \
+ --password itversity \
+ --warehouse-dir ravi/spark/retail_db \
+ --fields-terminated-by "|" -m 1 \
+ 
+ravi/spark/retail_db/categories
+ravi/spark/retail_db/customers
+ravi/spark/retail_db/departments
+ravi/spark/retail_db/order_items
+ravi/spark/retail_db/orders
+ravi/spark/retail_db/products
+
+ (Please verify after importing the data into hdfs ... )
+ 
+ Solution : 
+
+(To achieve the above use case we can simply write a join SQL statement in Mysql as below. 
+ select o.order_date, sum(oi.order_item_subtotal) 
+ from  orders o join order_items oi on o.order_id = oi.order_item_order_id 
+ group by o.order_date;
+ 
+ However, it is very expensive to use this query during the business hours and production environment. 
+ )
+ 
+ 
+ I am using here to achieve this using SPARK Scala programming.. 
+ 
+Spark-shell --master Yarn-Client
+
+    val orders = sc.textFile("ravi/spark/retail_db/orders")
+    val ordersCompleted = orders.filter(status => status.split(",")(3).equals("CLOSED") || status.split(",")(3).equals("COMPLETE"))
+    val ordersTuple = ordersCompleted.map(rec => (rec.split(",")(0).toInt, rec.split(",")(1)))
+    val orderItems = sc.textFile("ravi/spark/retail_db/order_items")
+    val orderItemsTuple = orderItems.map(rec => (rec.split(",")(0).toInt, rec.split(",")(4).toDouble))
+    val orderJoin = ordersTuple.join(orderItemsTuple)
+    val ordersJoinMap = orderJoin.map(_._2)
+    val revenueperDay = ordersJoinMap.reduceByKey(_ + _)
+  //  revenueperDay.collect().foreach(println)  ---- Please do not use on production system... if you are aware of your dataset then use only for testing purpose.
+    revenueperDay.saveAsTextFile("/Analyticsdata/retail_db")
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+
